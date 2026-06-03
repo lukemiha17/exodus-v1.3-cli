@@ -43,6 +43,51 @@ figcaption{font-size:12px;color:#888;padding:6px 10px;background:#fafafa;border-
 <div class='ln'></div>
 <hr>
 <div class='ln'></div>
+<h2>The architecture (canonical — Lucas, 2026-06-03)</h2>
+<div class='ln'></div>
+<p>&gt; This is the authoritative model the spec/UX in #47–#50 must conform to. The two</p>
+<p>&gt; levers (Steering, Realism) <strong>do not cross</strong>: Steering is Native-only, Realism is</p>
+<p>&gt; Template-only.</p>
+<div class='ln'></div>
+<p>You start with one input: <strong>ad copy</strong>. It branches into two independent engine families.</p>
+<div class='ln'></div>
+<pre>
+                          AD COPY
+                             │
+            ┌────────────────┴────────────────┐
+            │                                  │
+        NATIVE                             TEMPLATE
+   (images from your copy)        (your copy poured into fixed formats)
+            │                                  │
+    ┌───────┴───────┐                  ┌───────┴───────┐
+  REPTILE      COPY-DERIVED          AUTO            MANUAL
+ 13 psych      literal ads      system picks      you pick the
+ triggers →    from your        the ad-types      ad-types + how
+ wild          copy blocks                        many of each
+ concepts
+            │                                  │
+   ▸ count per engine                 ▸ 33 ad-types available
+   ▸ aspect (1:1 / 9:16)              ▸ realism: ON or OFF
+   ▸ STEERING ◄ your ideas              (one switch, whole batch)
+</pre>
+<div class='ln'></div>
+<p><strong>The two levers, and where each one lives</strong></p>
+<div class='ln'></div>
+<div class='ln'>| Lever | What it does | Lives on |</div>
+<p>|---|---|---|</p>
+<div class='ln'>| <strong>Steering</strong> | injects your own idea/direction into the render | <strong>Native only</strong> (Reptile + Copy-Derived) |</div>
+<div class='ln'>| <strong>Realism</strong> | photographic-realism guardrail | <strong>Template only</strong> (single on/off for all) |</div>
+<div class='ln'></div>
+<p>They don&#x27;t cross. Steering never touches templates; realism never touches native.</p>
+<div class='ln'></div>
+<p><strong>The decision space, in order — four choices:</strong></p>
+<p>1. <strong>Which ads</strong> — one or many</p>
+<p>2. <strong>Which engines</strong> — any mix of {Reptile, Copy-Derived, Template}</p>
+<p>3. <strong>Native config</strong> — count per engine · aspect · steering (your ideas, optional)</p>
+<p>4. <strong>Template config</strong> — auto or manual (which formats + how many each) · realism on/off</p>
+<div class='ln'></div>
+<hr>
+<div class='ln'></div>
 <h2>Findings</h2>
 <div class='ln'></div>
 <h3>#47 — &quot;Native&quot; is mislabeled: it&#x27;s the category, not an engine (CLI <code>--type native</code> actually = Reptile)</h3>
@@ -50,7 +95,7 @@ figcaption{font-size:12px;color:#888;padding:6px 10px;background:#fafafa;border-
 <div class='ln'>- <strong>Severity:</strong> P1 — a run labeled &quot;Native&quot; is actually the Reptile engine; the customer can&#x27;t tell what ran, and the vocabulary is inconsistent across CLI / dashboard / cards.</div>
 <div class='ln'>- <strong>What:</strong> &quot;Native&quot; is being used as if it&#x27;s an engine when it&#x27;s really the <strong>category</strong>:</div>
 <div class='ln'>  - <strong>Native is the tab/category.</strong> Under it sit <strong>two engines</strong>, each with its own per-aspect image count:</div>
-<div class='ln'>    - <strong>Reptile</strong> — reptile-brain triggers, 12 psychological angles → wild concepts.</div>
+<div class='ln'>    - <strong>Reptile</strong> — reptile-brain triggers, 13 psychological angles → wild concepts.</div>
 <div class='ln'>    - <strong>Copy-Derived</strong> — native ads built from your copy blocks.</div>
 <div class='ln'>  - There is <strong>no standalone &quot;Native&quot; engine.</strong> But a completed run card reads <strong>&quot;Creative Suite — Native&quot;</strong> while its badge says <strong>Reptile</strong> (see screenshot) — because the <strong>CLI <code>--type native</code> maps to the Reptile engine.</strong> So &quot;Native&quot; silently means &quot;Reptile&quot; in the CLI, and the dashboard inherits the mislabel.</div>
 <div class='ln'>  - Lucas: *&quot;There&#x27;s no fucking native; copy-derived and reptile are both versions of native. There&#x27;s not a second native one.&quot;* Confirmed by the CLI agent that fired the run: *&quot;<code>--type native</code> confusingly maps to the Reptile engine — that&#x27;s why the dashboard badged my &#x27;Native&#x27; run as Reptile. A genuine CLI naming bug.&quot;*</div>
@@ -103,7 +148,7 @@ figcaption{font-size:12px;color:#888;padding:6px 10px;background:#fafafa;border-
 <div class='ln'>- <strong>🧩 Open design — the config LOGIC (Lucas&#x27;s question):</strong> the hard part is the combinatorial space — <strong>N ads × {Reptile, Copy-Derived, Template} × {auto | manual} × per-type counts × realism on/off</strong>. Naïve &quot;12 of everything on every ad&quot; = ~150+ renders with no read on what&#x27;s working. Proposed logic (architecture-level; CLI agent is pulling the real ad-type + reptile-trigger lists to put concrete numbers on it):</div>
 <p>  1. <strong>Make volume opt-in, not multiplicative-by-default.</strong> The common path should be cheap: pick engine(s) → Scope = &quot;one, go deep&quot; → accept small count defaults → Submit. The full matrix is a power-user expansion, never the default.</p>
 <p>  2. <strong>Scope is the spend governor</strong> (decide *before* counts): *one ad, go deep* (cheapest signal / stress test — the right default) vs *all N, separate runs* (breadth, more spend). Scope sets how many ads get rendered.</p>
-<p>  3. <strong>Count is PER-ENGINE, not per-ad×per-type×per-angle.</strong> Native engines vary their own angles internally — Reptile samples from its 12 psychological angles, Copy-Derived from the copy blocks — so the user sets a single per-engine concept count (e.g. 3), and the engine handles type variety. Don&#x27;t expose 12 angle-counts.</p>
+<p>  3. <strong>Count is PER-ENGINE, not per-ad×per-type×per-angle.</strong> Native engines vary their own angles internally — Reptile samples from its 13 psychological triggers, Copy-Derived from the copy blocks — so the user sets a single per-engine concept count (e.g. 3), and the engine handles type variety. Don&#x27;t expose 13 angle-counts.</p>
 <p>  4. <strong>Template is its own branch</strong> (it has structure Native lacks):</p>
 <div class='ln'>     - <strong>auto</strong> = system picks a sensible ad-type spread (low-config default).</div>
 <div class='ln'>     - <strong>manual</strong> = user picks specific ad-types + a count each (e.g. <code>founder-note:2</code>, <code>testimonial:3</code>).</div>
