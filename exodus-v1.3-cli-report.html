@@ -40,6 +40,7 @@ figcaption{font-size:12px;color:#888;padding:6px 10px;background:#fafafa;border-
 <div class='ln'>- <strong>#48 (P1)</strong> — <strong>Generation auto-fires a default suite without asking — the config IS the creative call.</strong> Dropping 4 ads fired <strong>three runs in one batch</strong> (Template <code>auto·1:1</code> + Copy-Derived 4-concept + Reptile 4-concept) that Lucas never selected. It should *ask first* via a spec step (the Lucas-approved <strong>Engine → Scope → Aspect → Count → Submit</strong> wizard), and ship bounded <strong>run formats (F1–F6)</strong> instead of open spray. Default to <strong>nothing</strong>; never generate unasked output.</div>
 <div class='ln'>- <strong>#49 (P2)</strong> — <strong>No cancel command in the CLI.</strong> Once runs are fired there&#x27;s no way to stop them. Add <code>exodus image cancel &lt;runId&gt;</code> / batch-cancel.</div>
 <div class='ln'>- <strong>#50 (P1)</strong> — <strong>Brand Info (image-gen assets) isn&#x27;t prompted or validated when empty; two &quot;brand&quot; layers are conflated; no CLI setter.</strong> Image gen ran with founder/product empty while <code>doctor</code> said &quot;READY&quot; (that only reflects the partial copy layer). Founder name + product photos are dashboard-only — no CLI to set them.</div>
+<div class='ln'>- <strong>#51 (P1)</strong> — <strong>Manual template runs cap at 50 images/run and just error past it.</strong> &quot;2 per all 33&quot; = 66 images &gt; the 50-cap, so the run fails instead of completing. The front door (<code>image</code>/<code>template</code>) should <strong>auto-split into multiple runs (or warn up front)</strong> rather than erroring. (Re-surfaces v1.2 #33&#x27;s 50-cap.)</div>
 <div class='ln'></div>
 <hr>
 <div class='ln'></div>
@@ -176,7 +177,7 @@ figcaption{font-size:12px;color:#888;padding:6px 10px;background:#fafafa;border-
 <p>    &gt; <strong>3. Type something else</strong> · <strong>4. Talk it through first</strong></p>
 <div class='ln'>  - <strong>Wave 1 — Native:</strong> <strong>Ads</strong> (multi-select; <strong>default ALL ads selected</strong> — Lucas: *&quot;probably they want to run ALL ads&quot;*) → <strong>Engines</strong> → <strong>Aspect</strong> → <strong>Native count</strong> → Submit. → <code>screenshots/48-menu-of-questions-ads.png</code> (+ step shots <code>48-spec-wizard-1-engine.png</code>, <code>-2-scope.png</code>, <code>-3-aspect.png</code>)</div>
 <div class='ln'>  - <strong>Wave 2 — Template:</strong> <strong>Tmpl mode</strong> (Auto = system picks ad-types, total count per ad · Manual = you pick which of the 33) → <strong>Realism</strong> (Off/On, one switch all templates) → <strong>Tmpl count</strong> (1/3/5 per type-per-ad; Auto = total per ad, Manual = per format) → Submit. → <code>screenshots/48-wizard-w2-mode.png</code>, <code>48-wizard-w2-realism.png</code>, <code>48-wizard-w2-count.png</code></div>
-<div class='ln'>  - <strong>Wave 3 — Manual ad-types</strong> (only if Tmpl mode = Manual): pick which of the <strong>33 ad-types</strong> (grouped: social-proof · authority/story · demo/breaking · science/data · listicle/steps · problem/meme · product · bold/graphic) — same set across all ads, or per-ad. → <code>screenshots/48-wizard-manual-adtypes.png</code></div>
+<div class='ln'>  - <strong>Wave 3 — Manual ad-types</strong> (only if Tmpl mode = Manual): pick which of the <strong>33 ad-types</strong> (grouped: Social proof · Authority/story · News/breaking · Data/science · Listicle/steps · Problem framing · Product · Bold/graphic) — same set across all ads, or per-ad. <strong>Must be a real menu with a per-type quantity control — NOT free-text.</strong> Current build dumps the grouped 33-type list and asks the operator to *type* &quot;1. which formats · 2. how many per format&quot; (<code>screenshots/48-wizard-manual-adtypes.png</code>). Lucas: *&quot;this should be a MUCH clearer menu with an ability to choose how many of each I want.&quot;* → build a grouped <strong>checklist</strong> where each selected ad-type gets an inline <strong>count stepper</strong> (e.g. <code>testimonial ×3</code>, <code>hero ×2</code>); plus a &quot;same across all ads / per-ad&quot; toggle. (Steering stays Native-only — surface a one-line reminder here, not a field.)</div>
 <div class='ln'>- <strong>Proposed fix:</strong></div>
 <p>  1. <strong>Insert this configuration step before any run</strong> — CLI: the step-through wizard above (Engine→Scope→Aspect→Count→Submit). Dashboard: make submitting the modal the <strong>only</strong> way to fire — no implicit suite.</p>
 <p>  2. <strong>Template config surface:</strong> which ad-type(s) of the 33, per-type quantities, auto vs manual, model (gpt-image-2 / nano-banana-pro), realism — all explicit choices (the wizard branches into these when Template is picked).</p>
@@ -227,6 +228,20 @@ figcaption{font-size:12px;color:#888;padding:6px 10px;background:#fafafa;border-
 <hr>
 <div class='ln'></div>
 <div class='ln'></div>
+<h3>#51 — Manual template runs cap at 50 images/run; front door should auto-split or warn</h3>
+<div class='ln'>- <strong>Area:</strong> CLI generation front door (<code>exodus image</code> / <code>template</code>, manual mode).</div>
+<div class='ln'>- <strong>Severity:</strong> P1 — a legitimate spec (&quot;2 of all 33 ad-types&quot; = 66) <strong>errors</strong> instead of running.</div>
+<div class='ln'>- <strong>What:</strong> Manual template mode <strong>maxes at 50 images per run.</strong> Asking for <strong>2 per all 33 ad-types = 66</strong> exceeds the cap, so the run fails. The CLI agent had to <strong>hand-split</strong> it into two runs (25 formats → 50, + 8 formats → 16 = 66) to honor the request — the tool didn&#x27;t do this. Lucas: *&quot;see if we can fix this.&quot;*</div>
+<div class='ln'>- <strong>Where:</strong> <code>image</code>/<code>template</code> manual mode; the per-run image ceiling.</div>
+<div class='ln'>- <strong>Repro:</strong> request manual template, all 33 ad-types × 2 → 66 images → run errors on the 50-cap.</div>
+<div class='ln'>- <strong>Screenshot:</strong> *(none — runtime error; the 33-type set is <code>screenshots/48-wizard-manual-adtypes.png</code>)*</div>
+<div class='ln'>- <strong>Expected:</strong> the front door <strong>auto-splits</strong> an over-cap batch into N runs under the limit (transparently), <strong>or warns up front</strong> with the count and the split it will perform — never a hard error mid-spec.</div>
+<div class='ln'>- <strong>Proposed fix:</strong></div>
+<p>  1. <strong>Auto-chunk</strong> at submit: compute total images; if &gt; 50, split into ⌈total/50⌉ runs and fire sequentially (respect the Genesis VPS 1-concurrent limit — v1.2 A.44).</p>
+<p>  2. <strong>Or warn + confirm:</strong> &quot;66 images exceeds the 50/run cap — I&#x27;ll split into 2 runs (50 + 16). Proceed?&quot;</p>
+<p>  3. Surface the cap in the spec wizard&#x27;s count step so it&#x27;s visible before submit.</p>
+<div class='ln'>- <strong>Status:</strong> open — re-surfaces <strong>v1.2 #33</strong> (50-cap). (Logged in <code>reference_exodus_image_engines</code> gaps.)</div>
+<div class='ln'></div>
 <hr>
 <div class='ln'></div>
 <h2>Action index (for Brad)</h2>
@@ -237,6 +252,8 @@ figcaption{font-size:12px;color:#888;padding:6px 10px;background:#fafafa;border-
 <div class='ln'>| A.56 | #48 | P1 | Add spec step before generation (build to the Engine→Scope→Aspect→Count→Submit wizard + the F1–F6 run formats); default to nothing; validate assets; never auto-fire a suite | open · needs-brad-input |</div>
 <div class='ln'>| A.57 | #49 | P2 | Add CLI cancel (<code>exodus image cancel &lt;runId&gt;</code>/batch) + dashboard Cancel button; free the queue slot | open |</div>
 <div class='ln'>| A.58 | #50 | P1 | Validate Brand Info before asset-dependent runs; make <code>doctor</code> report both brand layers honestly; disambiguate copy-foundation vs Brand-Info; add CLI setter for founder/product | open · needs-brad-input |</div>
+<div class='ln'>| A.59 | #51 | P1 | Auto-split over-cap manual template batches (or warn+confirm) instead of erroring at 50 images/run; show the cap in the count step | open |</div>
+<div class='ln'>| A.60 | #48 (W3) | P1 | Manual ad-type picker = grouped checklist with inline per-type count stepper (not free-text) + same/per-ad toggle | open |</div>
 <div class='ln'></div>
 <hr>
 <div class='ln'></div>

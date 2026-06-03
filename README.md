@@ -29,6 +29,7 @@ Screenshots live in `screenshots/` and are **never edited** — saved exactly as
 - **#48 (P1)** — **Generation auto-fires a default suite without asking — the config IS the creative call.** Dropping 4 ads fired **three runs in one batch** (Template `auto·1:1` + Copy-Derived 4-concept + Reptile 4-concept) that Lucas never selected. It should *ask first* via a spec step (the Lucas-approved **Engine → Scope → Aspect → Count → Submit** wizard), and ship bounded **run formats (F1–F6)** instead of open spray. Default to **nothing**; never generate unasked output.
 - **#49 (P2)** — **No cancel command in the CLI.** Once runs are fired there's no way to stop them. Add `exodus image cancel <runId>` / batch-cancel.
 - **#50 (P1)** — **Brand Info (image-gen assets) isn't prompted or validated when empty; two "brand" layers are conflated; no CLI setter.** Image gen ran with founder/product empty while `doctor` said "READY" (that only reflects the partial copy layer). Founder name + product photos are dashboard-only — no CLI to set them.
+- **#51 (P1)** — **Manual template runs cap at 50 images/run and just error past it.** "2 per all 33" = 66 images > the 50-cap, so the run fails instead of completing. The front door (`image`/`template`) should **auto-split into multiple runs (or warn up front)** rather than erroring. (Re-surfaces v1.2 #33's 50-cap.)
 
 ---
 
@@ -177,7 +178,7 @@ They don't cross. Steering never touches templates; realism never touches native
     > **3. Type something else** · **4. Talk it through first**
   - **Wave 1 — Native:** **Ads** (multi-select; **default ALL ads selected** — Lucas: *"probably they want to run ALL ads"*) → **Engines** → **Aspect** → **Native count** → Submit. → `screenshots/48-menu-of-questions-ads.png` (+ step shots `48-spec-wizard-1-engine.png`, `-2-scope.png`, `-3-aspect.png`)
   - **Wave 2 — Template:** **Tmpl mode** (Auto = system picks ad-types, total count per ad · Manual = you pick which of the 33) → **Realism** (Off/On, one switch all templates) → **Tmpl count** (1/3/5 per type-per-ad; Auto = total per ad, Manual = per format) → Submit. → `screenshots/48-wizard-w2-mode.png`, `48-wizard-w2-realism.png`, `48-wizard-w2-count.png`
-  - **Wave 3 — Manual ad-types** (only if Tmpl mode = Manual): pick which of the **33 ad-types** (grouped: social-proof · authority/story · demo/breaking · science/data · listicle/steps · problem/meme · product · bold/graphic) — same set across all ads, or per-ad. → `screenshots/48-wizard-manual-adtypes.png`
+  - **Wave 3 — Manual ad-types** (only if Tmpl mode = Manual): pick which of the **33 ad-types** (grouped: Social proof · Authority/story · News/breaking · Data/science · Listicle/steps · Problem framing · Product · Bold/graphic) — same set across all ads, or per-ad. **Must be a real menu with a per-type quantity control — NOT free-text.** Current build dumps the grouped 33-type list and asks the operator to *type* "1. which formats · 2. how many per format" (`screenshots/48-wizard-manual-adtypes.png`). Lucas: *"this should be a MUCH clearer menu with an ability to choose how many of each I want."* → build a grouped **checklist** where each selected ad-type gets an inline **count stepper** (e.g. `testimonial ×3`, `hero ×2`); plus a "same across all ads / per-ad" toggle. (Steering stays Native-only — surface a one-line reminder here, not a field.)
 - **Proposed fix:**
   1. **Insert this configuration step before any run** — CLI: the step-through wizard above (Engine→Scope→Aspect→Count→Submit). Dashboard: make submitting the modal the **only** way to fire — no implicit suite.
   2. **Template config surface:** which ad-type(s) of the 33, per-type quantities, auto vs manual, model (gpt-image-2 / nano-banana-pro), realism — all explicit choices (the wizard branches into these when Template is picked).
@@ -232,6 +233,20 @@ They don't cross. Steering never touches templates; realism never touches native
 ---
 
 
+### #51 — Manual template runs cap at 50 images/run; front door should auto-split or warn
+- **Area:** CLI generation front door (`exodus image` / `template`, manual mode).
+- **Severity:** P1 — a legitimate spec ("2 of all 33 ad-types" = 66) **errors** instead of running.
+- **What:** Manual template mode **maxes at 50 images per run.** Asking for **2 per all 33 ad-types = 66** exceeds the cap, so the run fails. The CLI agent had to **hand-split** it into two runs (25 formats → 50, + 8 formats → 16 = 66) to honor the request — the tool didn't do this. Lucas: *"see if we can fix this."*
+- **Where:** `image`/`template` manual mode; the per-run image ceiling.
+- **Repro:** request manual template, all 33 ad-types × 2 → 66 images → run errors on the 50-cap.
+- **Screenshot:** *(none — runtime error; the 33-type set is `screenshots/48-wizard-manual-adtypes.png`)*
+- **Expected:** the front door **auto-splits** an over-cap batch into N runs under the limit (transparently), **or warns up front** with the count and the split it will perform — never a hard error mid-spec.
+- **Proposed fix:**
+  1. **Auto-chunk** at submit: compute total images; if > 50, split into ⌈total/50⌉ runs and fire sequentially (respect the Genesis VPS 1-concurrent limit — v1.2 A.44).
+  2. **Or warn + confirm:** "66 images exceeds the 50/run cap — I'll split into 2 runs (50 + 16). Proceed?"
+  3. Surface the cap in the spec wizard's count step so it's visible before submit.
+- **Status:** open — re-surfaces **v1.2 #33** (50-cap). (Logged in `reference_exodus_image_engines` gaps.)
+
 ---
 
 ## Action index (for Brad)
@@ -242,6 +257,8 @@ They don't cross. Steering never touches templates; realism never touches native
 | A.56 | #48 | P1 | Add spec step before generation (build to the Engine→Scope→Aspect→Count→Submit wizard + the F1–F6 run formats); default to nothing; validate assets; never auto-fire a suite | open · needs-brad-input |
 | A.57 | #49 | P2 | Add CLI cancel (`exodus image cancel <runId>`/batch) + dashboard Cancel button; free the queue slot | open |
 | A.58 | #50 | P1 | Validate Brand Info before asset-dependent runs; make `doctor` report both brand layers honestly; disambiguate copy-foundation vs Brand-Info; add CLI setter for founder/product | open · needs-brad-input |
+| A.59 | #51 | P1 | Auto-split over-cap manual template batches (or warn+confirm) instead of erroring at 50 images/run; show the cap in the count step | open |
+| A.60 | #48 (W3) | P1 | Manual ad-type picker = grouped checklist with inline per-type count stepper (not free-text) + same/per-ad toggle | open |
 
 ---
 
