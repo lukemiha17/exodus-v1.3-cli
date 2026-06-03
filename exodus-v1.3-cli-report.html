@@ -46,6 +46,7 @@ figcaption{font-size:12px;color:#888;padding:6px 10px;background:#fafafa;border-
 <div class='ln'>- <strong>#51 (P1)</strong> — <strong>Manual template runs cap at 50 images/run and just error past it.</strong> &quot;2 per all 33&quot; = 66 images &gt; the 50-cap, so the run fails instead of completing. The front door (<code>image</code>/<code>template</code>) should <strong>auto-split into multiple runs (or warn up front)</strong> rather than erroring. (Re-surfaces v1.2 #33&#x27;s 50-cap.)</div>
 <div class='ln'>- <strong>#53 (✅ approved design)</strong> — <strong>Copy flow: the &quot;what do you want done with this idea?&quot; gate.</strong> After a raw idea, before genesis writes, a menu offers <strong>Write the ad</strong> (straight to genesis, banks nothing — default) · <strong>Both</strong> (write now AND save to Idea Bank) · <strong>Just save it</strong> (<code>idea add</code>, no copy yet). Lucas: *&quot;kinda like this.&quot;* Matches the SOG bank-seeds-vs-rip-end-to-end model.</div>
 <div class='ln'>- <strong>#54 (P1)</strong> — <strong>Idea Bank → writer dispatch silently SKIPS an idea that&#x27;s already running; can&#x27;t generate the same idea multiple times.</strong> Dispatching an idea returned <strong>&quot;Dispatched 0 idea(s) to the writer. Skipped 1&quot;</strong> — it skipped because a Brief run for that idea was already &quot;running / No doc yet.&quot; <strong>Root cause confirmed:</strong> the idea is *locked* while its run is in flight, so every re-dispatch (note and all) is skipped; <code>genesis run --brief</code> bypasses the lock. Lucas: *&quot;you should be able to generate it multiple times.&quot;* Each dispatch should fire a NEW run (re-generation allowed); at most a soft confirm, never a silent skip — and the toast should say *why* it skipped.</div>
+<div class='ln'>- <strong>#56 (P1 — core copy-flow requirement)</strong> — <strong>Ask the pre-write questions before writing ANY copy — offered, never blocking.</strong> Every time, before genesis writes: <strong>1) Segment · 2) Awareness level · 3) Primer (don&#x27;t pre-decide — ASK) · 4) Mechanism · 5) CTA/where it&#x27;s driving · 6) Overall guidelines/steering.</strong> Default rule (Lucas: *&quot;really important&quot;*): the questions are <strong>offered but never block</strong> — skip any and it runs a default. Copy analog of the image #48 spec wizard; carries the #52 non-blocking-steering rule.</div>
 <div class='ln'>- <strong>#55 (P1)</strong> — <strong>Template renders fail under concurrency (Convex OCC).</strong> In the big template batch a large share of tiles came back <strong>&quot;Failed&quot;</strong> with <code>creativeSuiteTemplate:claimRenderSlot failed (503): OptimisticConcurrencyControlFailure</code> on the <code>creativeSuiteTemplateRenders</code> table — write contention from many renders claiming slots at once (amplified by #51&#x27;s 50-cap split firing several runs together). Lots worked, lots failed; no auto-retry. Backend needs OCC-resilient slot-claiming + retry.</div>
 <div class='ln'></div>
 <hr>
@@ -265,6 +266,7 @@ figcaption{font-size:12px;color:#888;padding:6px 10px;background:#fafafa;border-
 <p>  3. <strong>Add a steering-emphasis</strong> option (weight steering as primary when copy is also present).</p>
 <p>  4. Keep steering <strong>Native-only</strong> (clean split); surface + ask every time.</p>
 <div class='ln'>- <strong>Cross-ref:</strong> #37 (dashboard: make ad copy conditionally required / allow steering-only). This is the elevated, P0 version of that.</div>
+<div class='ln'>- <strong>Repeat incident (2026-06-03) — proves how easy this is to violate:</strong> when generating the 4-ad Native batch, the flow <strong>menued the config but then authored the steering text itself and fired 60 Native runs</strong> with placeholder steering — without asking Lucas for his directions. With <strong>no cancel (#49)</strong>, those 60 ran to completion as a throwaway &quot;rough first look.&quot; This is the exact failure #52 + the *elicit-never-assume* rule guard against, on the single input flagged most important. The fix isn&#x27;t just &quot;have a steering field&quot; — the flow (and the agent) must <strong>stop and ask for the operator&#x27;s steering before firing</strong>, every time.</div>
 <div class='ln'>- <strong>Status:</strong> open — <strong>top priority.</strong></div>
 <div class='ln'></div>
 <hr>
@@ -332,6 +334,24 @@ figcaption{font-size:12px;color:#888;padding:6px 10px;background:#fafafa;border-
 <p>  4. <strong>Auto-retry failed renders</strong> + add a <strong>&quot;retry failed&quot;</strong> action on the grid; show a clean per-tile error, not the raw Convex string.</p>
 <div class='ln'>- <strong>Status:</strong> open — backend reliability. (Concurrency theme: v1.2 A.44 Genesis VPS; #51 50-cap split.)</div>
 <div class='ln'></div>
+<h3>#56 — Ask the pre-write questions before writing ANY copy (offered, never blocking)</h3>
+<div class='ln'>- <strong>Area:</strong> Copy flow — the <strong>pre-write spec step</strong> before <code>genesis</code> writes (CLI + dashboard). The copy analog of the image-gen #48 spec wizard.</div>
+<div class='ln'>- <strong>Severity:</strong> P1 — <strong>core copy-flow requirement</strong> (embeds the P0 steering rule, #52). Lucas: *&quot;also this is really important to ask before writing any copy.&quot;*</div>
+<div class='ln'>- <strong>What:</strong> Before writing an ad, <strong>ask these every time</strong> — offer them, don&#x27;t assume the answers; the operator answers or skips to a default:</div>
+<p>  1. <strong>Segment</strong> — which segment is this for</p>
+<p>  2. <strong>Awareness level</strong> — unaware · problem-aware · solution-aware · product-aware</p>
+<p>  3. <strong>Primer</strong> — which primer <strong>(don&#x27;t decide in advance — ASK, and Lucas tells you)</strong> *(cf. dashboard #46 primer editor)*</p>
+<p>  4. <strong>Mechanism</strong> — what mechanism it should use</p>
+<p>  5. <strong>CTA / call to action</strong> — what are you driving people to / where&#x27;s it going *(cf. #54)*</p>
+<p>  6. <strong>Overall guidelines</strong> — any steering from the operator *(the #52 steering input)*</p>
+<div class='ln'>- <strong>Default rule (Lucas: &quot;really important&quot;):</strong> every question is <strong>OFFERED but NEVER BLOCKS.</strong> If the operator doesn&#x27;t want to answer one, the run proceeds on a <strong>default</strong>. Same non-blocking principle as #52.</div>
+<div class='ln'>- <strong>Where:</strong> pre-write step in the copy flow (Path A <code>genesis run --brief</code> / Path B idea bank → writer).</div>
+<div class='ln'>- <strong>Repro:</strong> start a copy write → there&#x27;s no consistent pre-write prompt for segment/awareness/primer/mechanism/CTA/steering; settings get assumed.</div>
+<div class='ln'>- <strong>Expected:</strong> a <strong>pre-write menu-of-questions wave</strong> (Segment → Awareness → Primer → Mechanism → CTA → Steering), each with a clear <strong>skip/default</strong> — nothing blocks, primer is <strong>asked not assumed</strong>.</div>
+<div class='ln'>- <strong>Proposed fix:</strong> build the pre-write wave mirroring the image-gen wizard; each question offers options + &quot;use default&quot;; <strong>never</strong> require an answer; <strong>never</strong> pre-decide the primer or author the steering.</div>
+<div class='ln'>- <strong>Cross-ref:</strong> #48 (image spec wizard) · #52 (steering asked, non-blocking) · #54 (CTA/destination) · memory <code>feedback_exodus_pre_write_copy_checklist</code>.</div>
+<div class='ln'>- <strong>Status:</strong> open.</div>
+<div class='ln'></div>
 <hr>
 <div class='ln'></div>
 <h2>Action index (for Brad)</h2>
@@ -348,6 +368,7 @@ figcaption{font-size:12px;color:#888;padding:6px 10px;background:#fafafa;border-
 <div class='ln'>| A.62 | #53 | ✅ | Keep the copy ideation gate (Write / Both / Just save) — banks-vs-writes split per the SOG model | approved-direction |</div>
 <div class='ln'>| A.63 | #54 | P1 | Allow re-dispatching an idea to the writer (N generations); stop locking idea against re-dispatch (or soft-confirm); toast must explain skips; show per-idea run history | open |</div>
 <div class='ln'>| A.64 | #55 | P1 | Make <code>claimRenderSlot</code> OCC-resilient (retry+backoff); remove hot-doc contention (shard/per-row); throttle concurrent claims; auto-retry + &quot;retry failed&quot; UI | open |</div>
+<div class='ln'>| A.65 | #56 | P1 | Pre-write copy wave: ask Segment·Awareness·Primer·Mechanism·CTA·Steering every time; offered, non-blocking defaults; never pre-decide primer or author steering | open |</div>
 <div class='ln'></div>
 <hr>
 <div class='ln'></div>

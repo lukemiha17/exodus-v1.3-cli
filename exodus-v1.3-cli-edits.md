@@ -35,6 +35,7 @@ Screenshots live in `screenshots/` and are **never edited** — saved exactly as
 - **#51 (P1)** — **Manual template runs cap at 50 images/run and just error past it.** "2 per all 33" = 66 images > the 50-cap, so the run fails instead of completing. The front door (`image`/`template`) should **auto-split into multiple runs (or warn up front)** rather than erroring. (Re-surfaces v1.2 #33's 50-cap.)
 - **#53 (✅ approved design)** — **Copy flow: the "what do you want done with this idea?" gate.** After a raw idea, before genesis writes, a menu offers **Write the ad** (straight to genesis, banks nothing — default) · **Both** (write now AND save to Idea Bank) · **Just save it** (`idea add`, no copy yet). Lucas: *"kinda like this."* Matches the SOG bank-seeds-vs-rip-end-to-end model.
 - **#54 (P1)** — **Idea Bank → writer dispatch silently SKIPS an idea that's already running; can't generate the same idea multiple times.** Dispatching an idea returned **"Dispatched 0 idea(s) to the writer. Skipped 1"** — it skipped because a Brief run for that idea was already "running / No doc yet." **Root cause confirmed:** the idea is *locked* while its run is in flight, so every re-dispatch (note and all) is skipped; `genesis run --brief` bypasses the lock. Lucas: *"you should be able to generate it multiple times."* Each dispatch should fire a NEW run (re-generation allowed); at most a soft confirm, never a silent skip — and the toast should say *why* it skipped.
+- **#56 (P1 — core copy-flow requirement)** — **Ask the pre-write questions before writing ANY copy — offered, never blocking.** Every time, before genesis writes: **1) Segment · 2) Awareness level · 3) Primer (don't pre-decide — ASK) · 4) Mechanism · 5) CTA/where it's driving · 6) Overall guidelines/steering.** Default rule (Lucas: *"really important"*): the questions are **offered but never block** — skip any and it runs a default. Copy analog of the image #48 spec wizard; carries the #52 non-blocking-steering rule.
 - **#55 (P1)** — **Template renders fail under concurrency (Convex OCC).** In the big template batch a large share of tiles came back **"Failed"** with `creativeSuiteTemplate:claimRenderSlot failed (503): OptimisticConcurrencyControlFailure` on the `creativeSuiteTemplateRenders` table — write contention from many renders claiming slots at once (amplified by #51's 50-cap split firing several runs together). Lots worked, lots failed; no auto-retry. Backend needs OCC-resilient slot-claiming + retry.
 
 ---
@@ -246,6 +247,7 @@ They don't cross. Steering never touches templates; realism never touches native
   3. **Add a steering-emphasis** option (weight steering as primary when copy is also present).
   4. Keep steering **Native-only** (clean split); surface + ask every time.
 - **Cross-ref:** #37 (dashboard: make ad copy conditionally required / allow steering-only). This is the elevated, P0 version of that.
+- **Repeat incident (2026-06-03) — proves how easy this is to violate:** when generating the 4-ad Native batch, the flow **menued the config but then authored the steering text itself and fired 60 Native runs** with placeholder steering — without asking Lucas for his directions. With **no cancel (#49)**, those 60 ran to completion as a throwaway "rough first look." This is the exact failure #52 + the *elicit-never-assume* rule guard against, on the single input flagged most important. The fix isn't just "have a steering field" — the flow (and the agent) must **stop and ask for the operator's steering before firing**, every time.
 - **Status:** open — **top priority.**
 
 ---
@@ -308,6 +310,24 @@ They don't cross. Steering never touches templates; realism never touches native
   4. **Auto-retry failed renders** + add a **"retry failed"** action on the grid; show a clean per-tile error, not the raw Convex string.
 - **Status:** open — backend reliability. (Concurrency theme: v1.2 A.44 Genesis VPS; #51 50-cap split.)
 
+### #56 — Ask the pre-write questions before writing ANY copy (offered, never blocking)
+- **Area:** Copy flow — the **pre-write spec step** before `genesis` writes (CLI + dashboard). The copy analog of the image-gen #48 spec wizard.
+- **Severity:** P1 — **core copy-flow requirement** (embeds the P0 steering rule, #52). Lucas: *"also this is really important to ask before writing any copy."*
+- **What:** Before writing an ad, **ask these every time** — offer them, don't assume the answers; the operator answers or skips to a default:
+  1. **Segment** — which segment is this for
+  2. **Awareness level** — unaware · problem-aware · solution-aware · product-aware
+  3. **Primer** — which primer **(don't decide in advance — ASK, and Lucas tells you)** *(cf. dashboard #46 primer editor)*
+  4. **Mechanism** — what mechanism it should use
+  5. **CTA / call to action** — what are you driving people to / where's it going *(cf. #54)*
+  6. **Overall guidelines** — any steering from the operator *(the #52 steering input)*
+- **Default rule (Lucas: "really important"):** every question is **OFFERED but NEVER BLOCKS.** If the operator doesn't want to answer one, the run proceeds on a **default**. Same non-blocking principle as #52.
+- **Where:** pre-write step in the copy flow (Path A `genesis run --brief` / Path B idea bank → writer).
+- **Repro:** start a copy write → there's no consistent pre-write prompt for segment/awareness/primer/mechanism/CTA/steering; settings get assumed.
+- **Expected:** a **pre-write menu-of-questions wave** (Segment → Awareness → Primer → Mechanism → CTA → Steering), each with a clear **skip/default** — nothing blocks, primer is **asked not assumed**.
+- **Proposed fix:** build the pre-write wave mirroring the image-gen wizard; each question offers options + "use default"; **never** require an answer; **never** pre-decide the primer or author the steering.
+- **Cross-ref:** #48 (image spec wizard) · #52 (steering asked, non-blocking) · #54 (CTA/destination) · memory `feedback_exodus_pre_write_copy_checklist`.
+- **Status:** open.
+
 ---
 
 ## Action index (for Brad)
@@ -324,6 +344,7 @@ They don't cross. Steering never touches templates; realism never touches native
 | A.62 | #53 | ✅ | Keep the copy ideation gate (Write / Both / Just save) — banks-vs-writes split per the SOG model | approved-direction |
 | A.63 | #54 | P1 | Allow re-dispatching an idea to the writer (N generations); stop locking idea against re-dispatch (or soft-confirm); toast must explain skips; show per-idea run history | open |
 | A.64 | #55 | P1 | Make `claimRenderSlot` OCC-resilient (retry+backoff); remove hot-doc contention (shard/per-row); throttle concurrent claims; auto-retry + "retry failed" UI | open |
+| A.65 | #56 | P1 | Pre-write copy wave: ask Segment·Awareness·Primer·Mechanism·CTA·Steering every time; offered, non-blocking defaults; never pre-decide primer or author steering | open |
 
 ---
 
