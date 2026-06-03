@@ -33,6 +33,7 @@ Screenshots live in `screenshots/` and are **never edited** — saved exactly as
 - **#49 (P2)** — **No cancel command in the CLI.** Once runs are fired there's no way to stop them. Add `exodus image cancel <runId>` / batch-cancel.
 - **#50 (P1)** — **Brand Info (image-gen assets) isn't prompted or validated when empty; two "brand" layers are conflated; no CLI setter.** Image gen ran with founder/product empty while `doctor` said "READY" (that only reflects the partial copy layer). Founder name + product photos are dashboard-only — no CLI to set them.
 - **#51 (P1)** — **Manual template runs cap at 50 images/run and just error past it.** "2 per all 33" = 66 images > the 50-cap, so the run fails instead of completing. The front door (`image`/`template`) should **auto-split into multiple runs (or warn up front)** rather than erroring. (Re-surfaces v1.2 #33's 50-cap.)
+- **#53 (✅ approved design)** — **Copy flow: the "what do you want done with this idea?" gate.** After a raw idea, before genesis writes, a menu offers **Write the ad** (straight to genesis, banks nothing — default) · **Both** (write now AND save to Idea Bank) · **Just save it** (`idea add`, no copy yet). Lucas: *"kinda like this."* Matches the SOG bank-seeds-vs-rip-end-to-end model.
 
 ---
 
@@ -271,6 +272,29 @@ They don't cross. Steering never touches templates; realism never touches native
 
 ---
 
+## Copy pipeline (genesis writer) — findings
+
+> New surface (2026-06-03): feedback on the **copy itself** — the `genesis` writer. Raw idea → **Path A** (`genesis run --brief "<idea>"`) or **Path B** (idea bank: `idea gambit "<dump>"` splits → `idea write <KEY>`) → Genesis writer → Google Doc. Knobs: `--awareness` (unaware · problem-aware [default] · solution-aware · product-aware) · `--variants` (1–10, default 6) · `--seeds` (per-run creative seeds, brief mode).
+
+### #53 — Copy flow: "what do you want done with this idea?" gate (Write / Both / Just save) — ✅ approved direction
+- **Area:** Copy flow — the decision point after a **raw idea** is given, before `genesis` writes.
+- **Severity:** ✅ approved design (Lucas: *"kinda like this"*) — capture as the build-to direction, minor wording TBD.
+- **What:** A menu — **"Frame-control idea — what do you want me to do with it?"**:
+  1. **Write the ad** — send straight to genesis and write the copy now (banks nothing). *The default most people want.*
+  2. **Both** — write the ad now **AND** save it to the Idea Bank so it's reusable later.
+  3. **Just save it** — bank the idea in the Idea Bank (`idea add`); don't write copy yet.
+  4. Type something · 5. Chat about this.
+- **Why it's right:** matches Lucas's **SOG mental model** — every ideation source should support *both* "rip end-to-end" (Write) and "just bank the seed for later" (Just save), plus Both. Banked ideation as a first-class primitive, addressable later via `idea write <KEY>`.
+- **Where:** copy flow gate, after raw idea / before genesis. (Mirrors the image-gen "who decides" gate — one explicit decision per screen, menu of questions.)
+**Screenshot:**
+
+![53-copy-save-write-menu.png](screenshots/53-copy-save-write-menu.png)
+
+- **Expected / direction:** keep this gate. It correctly separates **ideation (bank)** from **copy (write)** so the operator can stop at seeds or rip through — their call, asked not assumed.
+- **Status:** ✅ approved-as-direction — "kinda like this." (Refine wording on a later pass if needed.)
+
+---
+
 ## Action index (for Brad)
 
 | Action | Finding | Severity | One-liner | Status |
@@ -282,6 +306,7 @@ They don't cross. Steering never touches templates; realism never touches native
 | A.58 | #50 | P1 | Validate Brand Info before asset-dependent runs; make `doctor` report both brand layers honestly; disambiguate copy-foundation vs Brand-Info; add CLI setter for founder/product | open · needs-brad-input |
 | A.59 | #51 | P1 | Auto-split over-cap manual template batches (or warn+confirm) instead of erroring at 50 images/run; show the cap in the count step | open |
 | A.60 | #48 (W3) | P1 | Manual ad-type picker = grouped checklist with inline per-type count stepper (not free-text) + same/per-ad toggle | open |
+| A.62 | #53 | ✅ | Keep the copy ideation gate (Write / Both / Just save) — banks-vs-writes split per the SOG model | approved-direction |
 
 ---
 
