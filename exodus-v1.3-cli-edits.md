@@ -34,6 +34,7 @@ Screenshots live in `screenshots/` and are **never edited** — saved exactly as
 - **#50 (P1)** — **Brand Info (image-gen assets) isn't prompted or validated when empty; two "brand" layers are conflated; no CLI setter.** Image gen ran with founder/product empty while `doctor` said "READY" (that only reflects the partial copy layer). Founder name + product photos are dashboard-only — no CLI to set them.
 - **#51 (P1)** — **Manual template runs cap at 50 images/run and just error past it.** "2 per all 33" = 66 images > the 50-cap, so the run fails instead of completing. The front door (`image`/`template`) should **auto-split into multiple runs (or warn up front)** rather than erroring. (Re-surfaces v1.2 #33's 50-cap.)
 - **#53 (✅ approved design)** — **Copy flow: the "what do you want done with this idea?" gate.** After a raw idea, before genesis writes, a menu offers **Write the ad** (straight to genesis, banks nothing — default) · **Both** (write now AND save to Idea Bank) · **Just save it** (`idea add`, no copy yet). Lucas: *"kinda like this."* Matches the SOG bank-seeds-vs-rip-end-to-end model.
+- **#54 (P1)** — **Idea Bank → writer dispatch silently SKIPS an idea that's already running; can't generate the same idea multiple times.** Dispatching an idea returned **"Dispatched 0 idea(s) to the writer. Skipped 1"** — it skipped because a Brief run for that idea was already "running / No doc yet." Lucas: *"you should be able to generate it multiple times."* Each dispatch should fire a NEW run (re-generation allowed); at most a soft confirm, never a silent skip — and the toast should say *why* it skipped.
 
 ---
 
@@ -266,6 +267,27 @@ They don't cross. Steering never touches templates; realism never touches native
 - **Expected / direction:** keep this gate. It correctly separates **ideation (bank)** from **copy (write)** so the operator can stop at seeds or rip through — their call, asked not assumed.
 - **Status:** ✅ approved-as-direction — "kinda like this." (Refine wording on a later pass if needed.)
 
+### #54 — Idea Bank → writer dispatch silently skips an already-running idea; can't re-generate the same idea
+- **Area:** Copy flow — **Idea Bank → "write/dispatch to writer"** action (dashboard).
+- **Severity:** P1 — blocks a legitimate workflow (generating the same idea more than once) and fails silently.
+- **What:** Dispatching an idea from the Idea Bank to the genesis writer returned a toast: **"Dispatched 0 idea(s) to the writer. Skipped 1."** — nothing new was written. The idea card (**G2 · Gambit · "Writing…"** — *"She won't leave for the better-looking man — she'll leave for the more certain one"*, with **Notes (steering)** = *"make this as AGGRESSIVE and t…"*) already had a **Brief run "running / No doc yet"** (Jun 3, 4:05 PM). So the dispatch was **skipped because a run for that idea was already in flight** (a too-aggressive de-dupe). Lucas: *"I tried to launch from the ideas thing. It's not really working… I think it's because it's already running maybe the same idea, but **you should be able to generate it multiple times.**"*
+  - *(Aside: the idea card carries a **Notes (steering)** field — good, supports #52's steering-as-first-class; the bug is purely the dispatch skip.)*
+- **Where:** Idea Bank list → select idea → dispatch to writer; the "Dispatched 0… Skipped 1" toast; idea card "Writing…" badge; the running Brief run showing "No doc yet."
+- **Repro:**
+  1. An idea already has a writer run in progress (or was dispatched once).
+  2. Select that idea and dispatch to the writer again.
+  3. Toast: **"Dispatched 0 idea(s) to the writer. Skipped 1"** — no new run fires.
+- **Screenshot:** `screenshots/54-idea-bank-card-writing.png`
+- **Screenshot:** `screenshots/54-dispatched-0-skipped-1.png`
+- **Screenshot:** `screenshots/54-idea-run-running-no-doc.png`
+- **Expected:** each dispatch creates a **new** genesis run; the same idea can be generated **multiple times** (repeat or concurrent). At most a **soft confirm** ("a run for this is already in progress — generate again?"), never a silent skip. The toast must state **why** anything was skipped.
+- **Proposed fix:**
+  1. **Allow re-dispatch** — don't block on "already running / already written." Each dispatch = a fresh genesis run for that idea.
+  2. If guarding accidental double-fire, make it a **confirm**, not a hard skip.
+  3. **Explain skips** in the toast ("Skipped 1: already running — generate again?") instead of an opaque "Skipped 1."
+  4. Surface **per-idea run history** (N runs) so repeat generations are visible from the bank.
+- **Status:** open.
+
 ---
 
 ## Action index (for Brad)
@@ -280,6 +302,7 @@ They don't cross. Steering never touches templates; realism never touches native
 | A.59 | #51 | P1 | Auto-split over-cap manual template batches (or warn+confirm) instead of erroring at 50 images/run; show the cap in the count step | open |
 | A.60 | #48 (W3) | P1 | Manual ad-type picker = grouped checklist with inline per-type count stepper (not free-text) + same/per-ad toggle | open |
 | A.62 | #53 | ✅ | Keep the copy ideation gate (Write / Both / Just save) — banks-vs-writes split per the SOG model | approved-direction |
+| A.63 | #54 | P1 | Allow re-dispatching an idea to the writer (N generations); soft-confirm not silent-skip; toast must explain skips; show per-idea run history | open |
 
 ---
 
