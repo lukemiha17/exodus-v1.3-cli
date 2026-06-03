@@ -19,6 +19,8 @@ figcaption{font-size:12px;color:#888;padding:6px 10px;background:#fafafa;border-
 <div class='ln'></div>
 <p><strong>Companion pass:</strong> the <strong>dashboard</strong> audit lives in its own repo (<code>exodus-v1.3-dashboard</code>, findings #37–46). This is the <strong>CLI</strong> companion. Finding numbers continue the shared audit sequence — #1–46 were prior dashboard/onboarding/creative passes; <strong>this CLI pass is #47+.</strong></p>
 <div class='ln'></div>
+<p><strong>📄 See also <code>exodus-v1.3-cli-full.md</code></strong> — the consolidated A–E writeup (app findings · process feedback · canonical architecture · reference data: engines/ad-types/triggers/caps · the executed-run record with all runIds).</p>
+<div class='ln'></div>
 <hr>
 <div class='ln'></div>
 <h2>How to read this doc (for Brad + downstream AI)</h2>
@@ -36,6 +38,7 @@ figcaption{font-size:12px;color:#888;padding:6px 10px;background:#fafafa;border-
 <div class='ln'></div>
 <h2>TL;DR — running summary</h2>
 <div class='ln'></div>
+<div class='ln'>- <strong>#52 (P0 — THE #1 issue overall)</strong> — <strong>Steering must be an explicitly-requested, first-class input</strong> — and must support <strong>steering-ONLY runs (no ad copy)</strong> and <strong>steering-EMPHASIS</strong>. The flow has to ASK for the operator&#x27;s steering instructions every time; sometimes the run is *for* an ad but the operator wants only their steering (no copy) to drive it, or wants steering weighted as primary. Steering stays Native-only.</div>
 <div class='ln'>- <strong>#47 (P1)</strong> — <strong>&quot;Native&quot; is mislabeled — it&#x27;s the category, not an engine.</strong> Native is the *tab*; the two engines under it are <strong>Reptile</strong> and <strong>Copy-Derived</strong>. There is no standalone &quot;Native&quot; engine — yet a run card reads &quot;Creative Suite — <strong>Native</strong>&quot; while badged <strong>Reptile</strong>, because CLI <code>--type native</code> silently maps to the Reptile engine. Customer can&#x27;t tell which engine ran. Fix the taxonomy across CLI + dashboard + run-card labels.</div>
 <div class='ln'>- <strong>#48 (P1)</strong> — <strong>Generation auto-fires a default suite without asking — the config IS the creative call.</strong> Dropping 4 ads fired <strong>three runs in one batch</strong> (Template <code>auto·1:1</code> + Copy-Derived 4-concept + Reptile 4-concept) that Lucas never selected. It should *ask first* via a spec step (the Lucas-approved <strong>Engine → Scope → Aspect → Count → Submit</strong> wizard), and ship bounded <strong>run formats (F1–F6)</strong> instead of open spray. Default to <strong>nothing</strong>; never generate unasked output.</div>
 <div class='ln'>- <strong>#49 (P2)</strong> — <strong>No cancel command in the CLI.</strong> Once runs are fired there&#x27;s no way to stop them. Add <code>exodus image cancel &lt;runId&gt;</code> / batch-cancel.</div>
@@ -242,12 +245,32 @@ figcaption{font-size:12px;color:#888;padding:6px 10px;background:#fafafa;border-
 <p>  3. Surface the cap in the spec wizard&#x27;s count step so it&#x27;s visible before submit.</p>
 <div class='ln'>- <strong>Status:</strong> open — re-surfaces <strong>v1.2 #33</strong> (50-cap). (Logged in <code>reference_exodus_image_engines</code> gaps.)</div>
 <div class='ln'></div>
+<h3>#52 — [#1 ISSUE] Steering must be explicitly requested, first-class — incl. steering-only (no copy) and steering-emphasis</h3>
+<div class='ln'>- <strong>Area:</strong> Generation spec flow (the spec wizard&#x27;s <strong>Native</strong> wave) — CLI <code>exodus image --steer</code> + dashboard New batch run.</div>
+<div class='ln'>- <strong>Severity:</strong> <strong>P0</strong> — Lucas&#x27;s single most important issue. Blocks his core use case if wrong.</div>
+<div class='ln'>- <strong>What:</strong> The flow <strong>MUST ask the operator for their specific steering instructions, every time</strong> — never skip it, never bury it as &quot;(optional)&quot; at the bottom. Two first-class modes must work:</div>
+<p>  1. <strong>Steering-only (no ad copy):</strong> a run *for* an ad where the operator deliberately does <strong>not</strong> include ad copy — they want <strong>only their steering</strong> to drive the render. (Native <code>--steer</code> with no copy → steering becomes the brief; the flow must offer this, not require copy.)</p>
+<p>  2. <strong>Steering-emphasis:</strong> copy is included, but the operator wants steering <strong>weighted as the primary driver</strong>.</p>
+<div class='ln'>- <strong>Lucas (verbatim, 2026-06-03 — every word, as he required):</strong></div>
+<p>  &gt; &quot;the ONLY big issue OVERALL and iTS REALLY FUCKING IMPROTANT... IT MUST Ask for my specific steering information because sometimes it&#x27;s for an ad, but I don&#x27;t even want to include the ad copy. I just want my steering instructions, or I want to emphasize my steering instructions. That is fucking, fucking, fucking, fucking, fucking, fucking, fucking, fucking important, and include every single one of those fucks in this GitHub.&quot;</p>
+<div class='ln'>- <strong>Where:</strong> Native wave of the spec wizard; CLI <code>--steer</code>/<code>--direction</code>; dashboard New batch run &quot;Steering / image direction&quot; field.</div>
+<div class='ln'>- <strong>Repro:</strong> start a generation spec → there&#x27;s no guaranteed prompt for steering, and a no-copy / steering-only path isn&#x27;t offered (copy is treated as required — see #37).</div>
+<div class='ln'>- <strong>Expected:</strong> every Native run <strong>asks for steering instructions</strong> as a prominent first-class input; a run can proceed with <strong>steering and no copy</strong>; steering can be marked as the emphasized/primary driver.</div>
+<div class='ln'>- <strong>Proposed fix:</strong></div>
+<p>  1. <strong>Always ask for steering</strong> in the Native wave — prominent free-text, not optional-at-the-bottom.</p>
+<p>  2. <strong>Allow steering-only runs</strong> — no ad copy required when steering is present (Native renders from steering as the brief).</p>
+<p>  3. <strong>Add a steering-emphasis</strong> option (weight steering as primary when copy is also present).</p>
+<p>  4. Keep steering <strong>Native-only</strong> (clean split); surface + ask every time.</p>
+<div class='ln'>- <strong>Cross-ref:</strong> #37 (dashboard: make ad copy conditionally required / allow steering-only). This is the elevated, P0 version of that.</div>
+<div class='ln'>- <strong>Status:</strong> open — <strong>top priority.</strong></div>
+<div class='ln'></div>
 <hr>
 <div class='ln'></div>
 <h2>Action index (for Brad)</h2>
 <div class='ln'></div>
 <div class='ln'>| Action | Finding | Severity | One-liner | Status |</div>
 <p>|---|---|---|---|---|</p>
+<div class='ln'>| A.61 | #52 | <strong>P0</strong> | Steering = always-asked first-class input; support steering-ONLY (no copy) + steering-EMPHASIS; Native-only | open · top-priority |</div>
 <div class='ln'>| A.55 | #47 | P1 | Fix &quot;Native&quot; taxonomy: rename CLI <code>--type native</code> (→ Reptile); label runs by engine, never &quot;Native&quot;; make card title+badge agree | open |</div>
 <div class='ln'>| A.56 | #48 | P1 | Add spec step before generation (build to the Engine→Scope→Aspect→Count→Submit wizard + the F1–F6 run formats); default to nothing; validate assets; never auto-fire a suite | open · needs-brad-input |</div>
 <div class='ln'>| A.57 | #49 | P2 | Add CLI cancel (<code>exodus image cancel &lt;runId&gt;</code>/batch) + dashboard Cancel button; free the queue slot | open |</div>

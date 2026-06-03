@@ -8,6 +8,8 @@
 
 **Companion pass:** the **dashboard** audit lives in its own repo (`exodus-v1.3-dashboard`, findings #37–46). This is the **CLI** companion. Finding numbers continue the shared audit sequence — #1–46 were prior dashboard/onboarding/creative passes; **this CLI pass is #47+.**
 
+**📄 See also `exodus-v1.3-cli-full.md`** — the consolidated A–E writeup (app findings · process feedback · canonical architecture · reference data: engines/ad-types/triggers/caps · the executed-run record with all runIds).
+
 ---
 
 ## How to read this doc (for Brad + downstream AI)
@@ -25,6 +27,7 @@ Screenshots live in `screenshots/` and are **never edited** — saved exactly as
 
 ## TL;DR — running summary
 
+- **#52 (P0 — THE #1 issue overall)** — **Steering must be an explicitly-requested, first-class input** — and must support **steering-ONLY runs (no ad copy)** and **steering-EMPHASIS**. The flow has to ASK for the operator's steering instructions every time; sometimes the run is *for* an ad but the operator wants only their steering (no copy) to drive it, or wants steering weighted as primary. Steering stays Native-only.
 - **#47 (P1)** — **"Native" is mislabeled — it's the category, not an engine.** Native is the *tab*; the two engines under it are **Reptile** and **Copy-Derived**. There is no standalone "Native" engine — yet a run card reads "Creative Suite — **Native**" while badged **Reptile**, because CLI `--type native` silently maps to the Reptile engine. Customer can't tell which engine ran. Fix the taxonomy across CLI + dashboard + run-card labels.
 - **#48 (P1)** — **Generation auto-fires a default suite without asking — the config IS the creative call.** Dropping 4 ads fired **three runs in one batch** (Template `auto·1:1` + Copy-Derived 4-concept + Reptile 4-concept) that Lucas never selected. It should *ask first* via a spec step (the Lucas-approved **Engine → Scope → Aspect → Count → Submit** wizard), and ship bounded **run formats (F1–F6)** instead of open spray. Default to **nothing**; never generate unasked output.
 - **#49 (P2)** — **No cancel command in the CLI.** Once runs are fired there's no way to stop them. Add `exodus image cancel <runId>` / batch-cancel.
@@ -247,12 +250,32 @@ They don't cross. Steering never touches templates; realism never touches native
   3. Surface the cap in the spec wizard's count step so it's visible before submit.
 - **Status:** open — re-surfaces **v1.2 #33** (50-cap). (Logged in `reference_exodus_image_engines` gaps.)
 
+### #52 — [#1 ISSUE] Steering must be explicitly requested, first-class — incl. steering-only (no copy) and steering-emphasis
+- **Area:** Generation spec flow (the spec wizard's **Native** wave) — CLI `exodus image --steer` + dashboard New batch run.
+- **Severity:** **P0** — Lucas's single most important issue. Blocks his core use case if wrong.
+- **What:** The flow **MUST ask the operator for their specific steering instructions, every time** — never skip it, never bury it as "(optional)" at the bottom. Two first-class modes must work:
+  1. **Steering-only (no ad copy):** a run *for* an ad where the operator deliberately does **not** include ad copy — they want **only their steering** to drive the render. (Native `--steer` with no copy → steering becomes the brief; the flow must offer this, not require copy.)
+  2. **Steering-emphasis:** copy is included, but the operator wants steering **weighted as the primary driver**.
+- **Lucas (verbatim, 2026-06-03 — every word, as he required):**
+  > "the ONLY big issue OVERALL and iTS REALLY FUCKING IMPROTANT... IT MUST Ask for my specific steering information because sometimes it's for an ad, but I don't even want to include the ad copy. I just want my steering instructions, or I want to emphasize my steering instructions. That is fucking, fucking, fucking, fucking, fucking, fucking, fucking, fucking important, and include every single one of those fucks in this GitHub."
+- **Where:** Native wave of the spec wizard; CLI `--steer`/`--direction`; dashboard New batch run "Steering / image direction" field.
+- **Repro:** start a generation spec → there's no guaranteed prompt for steering, and a no-copy / steering-only path isn't offered (copy is treated as required — see #37).
+- **Expected:** every Native run **asks for steering instructions** as a prominent first-class input; a run can proceed with **steering and no copy**; steering can be marked as the emphasized/primary driver.
+- **Proposed fix:**
+  1. **Always ask for steering** in the Native wave — prominent free-text, not optional-at-the-bottom.
+  2. **Allow steering-only runs** — no ad copy required when steering is present (Native renders from steering as the brief).
+  3. **Add a steering-emphasis** option (weight steering as primary when copy is also present).
+  4. Keep steering **Native-only** (clean split); surface + ask every time.
+- **Cross-ref:** #37 (dashboard: make ad copy conditionally required / allow steering-only). This is the elevated, P0 version of that.
+- **Status:** open — **top priority.**
+
 ---
 
 ## Action index (for Brad)
 
 | Action | Finding | Severity | One-liner | Status |
 |---|---|---|---|---|
+| A.61 | #52 | **P0** | Steering = always-asked first-class input; support steering-ONLY (no copy) + steering-EMPHASIS; Native-only | open · top-priority |
 | A.55 | #47 | P1 | Fix "Native" taxonomy: rename CLI `--type native` (→ Reptile); label runs by engine, never "Native"; make card title+badge agree | open |
 | A.56 | #48 | P1 | Add spec step before generation (build to the Engine→Scope→Aspect→Count→Submit wizard + the F1–F6 run formats); default to nothing; validate assets; never auto-fire a suite | open · needs-brad-input |
 | A.57 | #49 | P2 | Add CLI cancel (`exodus image cancel <runId>`/batch) + dashboard Cancel button; free the queue slot | open |
