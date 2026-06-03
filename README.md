@@ -29,6 +29,7 @@ Screenshots live in `screenshots/` and are **never edited** — saved exactly as
 
 - **#52 (P0 — THE #1 issue overall)** — **Steering must be an explicitly-requested, first-class input** — and must support **steering-ONLY runs (no ad copy)** and **steering-EMPHASIS**. The flow has to ASK for the operator's steering instructions every time; sometimes the run is *for* an ad but the operator wants only their steering (no copy) to drive it, or wants steering weighted as primary. Steering stays Native-only.
 - **#57 (P0 — Lucas: "SUPER FUCKING IMPORTANT")** — **No way to ingest raw Facebook ad copy / a FB Ad Library URL into the copy pipeline.** `genesis --reel` is IG/TikTok only; `--swipe <id>` needs an already-mined internal id; swipe mining is page-level (`fbPageRef`), not a single ad. **Nothing accepts a pasted FB ad's raw copy or an Ad Library ad URL/id directly.** Must add: paste raw FB ad copy → write, and/or `--fb-ad <url|id>` → fetch + write. (Swipe = the S in SOG; this blocks it.)
+- **#59 (P1)** — **Swipe Library throws away the metadata ScrapeCreators already returns, and caps at 200.** Exodus stores only `headline/body/CTA/transcript` and caps `--list-swipes` at 200 with no pagination — discarding impressions/reach, dates, `total_active_time` (longevity), `collation_count` (variant count), spend, status, and the `cursor`/`searchResultsCount` (true total). We want: store it all · sort by date/longevity/variant-count/impressions · a **score = impressions × longevity (× variants)** · filter by brand/date/active · **semantic hook search** · paginate (no 200 cap) · **scope mining** so multi-product brands don't flood the library. "The data exists upstream — store it + surface it + let me sort/search it."
 - **#58 (P1)** — **The whole swipe pipeline is broken end-to-end** — no working path from "here's a competitor FB ad" to "written copy." research/watchlist needs real page names (can't derive from an ad link); mining is page-level (`fbPageRef`/`view_all_page_id`) which a raw ad URL doesn't surface; `--swipe` needs an already-mined id. Every route requires manually grabbing names / page-URLs / pasted text. Lucas: *"that process is pretty much all broken… pretty important."* (Compounds #57; v1.2 #28/#30.)
 - **#47 (P1)** — **"Native" is mislabeled — it's the category, not an engine.** Native is the *tab*; the two engines under it are **Reptile** and **Copy-Derived**. There is no standalone "Native" engine — yet a run card reads "Creative Suite — **Native**" while badged **Reptile**, because CLI `--type native` silently maps to the Reptile engine. Customer can't tell which engine ran. Fix the taxonomy across CLI + dashboard + run-card labels.
 - **#48 (P1)** — **Generation auto-fires a default suite without asking — the config IS the creative call.** Dropping 4 ads fired **three runs in one batch** (Template `auto·1:1` + Copy-Derived 4-concept + Reptile 4-concept) that Lucas never selected. It should *ask first* via a spec step (the Lucas-approved **Engine → Scope → Aspect → Count → Submit** wizard), and ship bounded **run formats (F1–F6)** instead of open spray. Default to **nothing**; never generate unasked output.
@@ -413,6 +414,30 @@ They don't cross. Steering never touches templates; realism never touches native
 - **Cross-ref:** **#57** (single-ad/raw-copy ingestion — the keystone) · v1.2 **#28** (no CLI for scraped data) · v1.2 **#30** (mining failures / MGTM won't scrape) · [[exodus-sog-ideation-framework]].
 - **Status:** open.
 
+### #59 — Swipe Library: capture + surface the metadata ScrapeCreators already returns; kill the 200 cap; sort/score/search
+- **Area:** Swipe Library — the script-creator / **ScrapeCreators** ingestion + the library store + `--list-swipes` / library UI.
+- **Severity:** P1 — high-value, mostly "store what's already upstream + surface it." (Lucas supplied this as a **copy-ready note for Brad**.)
+- **The core ask:** capture and surface the metadata **ScrapeCreators already returns**, and **stop capping the library at 200.** Right now Exodus stores only `headline / body / CTA / transcript` and caps `--list-swipes` at 200 — discarding the rest and not paginating.
+- **What ScrapeCreators already gives us per ad (we're dropping most of it):**
+  - `impressions_with_index` (impressions text + index) + `reach_estimate` — **impression / reach data**
+  - `start_date` / `end_date` (Unix) — **dates**
+  - `total_active_time` (seconds) — **longevity, exact** *(note: v1.2 #29 flagged "no daysRunning" — it exists upstream, just dropped)*
+  - `collation_count` — **number of variants in the campaign** (winning proxy)
+  - `spend`, `is_active` / `status`, `publisher_platform`
+  - `cursor` + `searchResultsCount` — **pagination + true total (so: way more than 200 available)**
+- **What we want to do with it:**
+  - **Swipe/save** any competitor ad into the library.
+  - **Sort** by: date · longevity (`total_active_time`) · variant count (`collation_count`) · impression proxy.
+  - **Score** = combine **impressions × longevity** (and variant count) into one "what's working" number. Multiply the proxies.
+  - **Filter** by brand, by date range (e.g. last 7 days), by active status.
+  - **Semantic search on hooks** — search the opening hooks/copy, cluster by hook type, "find me hooks like this one."
+  - **No 200 cap** — paginate via `cursor`; show true total ("showing 50 of 1,240").
+- **Mining fix:** mining pulls a brand's **entire catalog** — multi-product brands flood the library with off-niche ads. Let us **niche-filter / scope** which ads get pulled.
+- **Proposed fix (summary):** persist the full ScrapeCreators payload per ad (not just headline/body/CTA/transcript); paginate `--list-swipes` via `cursor` + expose `searchResultsCount`; add sort/filter/score (impressions × longevity × variants); semantic hook search + clustering; scope/niche-filter on mining.
+- **Screenshot:** *(none — copy-ready data/feature spec)*
+- **Cross-ref:** #57/#58 (swipe ingestion + pipeline) · v1.2 #28 (scraped data only via raw endpoint) · v1.2 #29 (the "no daysRunning" gap — resolved by storing `total_active_time`) · #40 (dashboard search) · [[exodus-sog-ideation-framework]].
+- **Status:** open.
+
 ---
 
 ## Action index (for Brad)
@@ -432,6 +457,7 @@ They don't cross. Steering never touches templates; realism never touches native
 | A.65 | #56 | P1 | Pre-write copy wave: ask Segment·Awareness·Primer·Mechanism·CTA·Steering every time; offered, non-blocking defaults; never pre-decide primer or author steering | open |
 | A.66 | #57 | **P0** | Accept raw FB ad copy + FB Ad Library URL/id directly into genesis (`--fb-ad <url\|id>`, `--paste "<copy>"`); save to swipe bank; fold in beat-map recipe | open · top-of-copy-backlog |
 | A.67 | #58 | P1 | Make swipe chain work end-to-end: auto-resolve page id from an ad URL; accept name/page-URL/paste entry points; chain research→mine→write in one flow | open |
+| A.68 | #59 | P1 | Persist full ScrapeCreators metadata (impressions/reach/dates/total_active_time/collation_count/spend/status); paginate via cursor (kill 200 cap); sort/score (impr×longevity×variants)/filter; semantic hook search; scope mining | open |
 
 ---
 
