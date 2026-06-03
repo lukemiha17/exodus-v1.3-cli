@@ -394,7 +394,14 @@ They don't cross. Steering never touches templates; realism never touches native
   - **Semantic search on hooks** — search the opening hooks/copy, cluster by hook type, "find me hooks like this one."
   - **No 200 cap** — paginate via `cursor`; show true total ("showing 50 of 1,240").
 - **Mining fix:** mining pulls a brand's **entire catalog** — multi-product brands flood the library with off-niche ads. Let us **niche-filter / scope** which ads get pulled.
-- **Proposed fix (summary):** persist the full ScrapeCreators payload per ad (not just headline/body/CTA/transcript); paginate `--list-swipes` via `cursor` + expose `searchResultsCount`; add sort/filter/score (impressions × longevity × variants); semantic hook search + clustering; scope/niche-filter on mining.
+- **Confirmed in source (this session) — the 200 cap is SERVER-SIDE and there's no brand query at all:**
+  - The swipe-list path parses **only `--limit`** — there is **no `--brand`, `--competitor`, `--offset`, or `--cursor`** flag.
+  - It calls `GET /api/v2/swipe-library?limit=N` — the request sends **nothing but a limit**; no brand parameter exists to send.
+  - **The 200 ceiling is server-side, NOT a CLI clamp** — passing `limit=800` still returned 200. → **Brad must fix the endpoint, not just add a CLI flag.**
+  - Each record carries `brandName` — the data *knows* the brand, you just **can't query or filter by it**.
+  - The returned 200 are **only the most-recent-mined** (this session: 1st Phorm + Transparent Labs) — so even client-side grepping **can't reach Primal Viking / Nugenix**; they're **not in the payload**. Pagination is the only way to reach them.
+  - **Only path to a specific competitor today:** the dashboard swipe library (if it exposes a brand filter), or build `--brand` + `--since` + pagination on `/api/v2/swipe-library`.
+- **Proposed fix (summary):** persist the full ScrapeCreators payload per ad (not just headline/body/CTA/transcript); **fix the server-side 200 cap** + add a **brand query param** to `/api/v2/swipe-library`; paginate via `cursor`/`--offset` + expose `searchResultsCount`; add CLI `--brand`/`--competitor`/`--since`; add sort/filter/score (impressions × longevity × variants); semantic hook search + clustering; scope/niche-filter on mining.
 - **Screenshot:** *(none — copy-ready data/feature spec)*
 - **Cross-ref:** #57/#58 (swipe ingestion + pipeline) · v1.2 #28 (scraped data only via raw endpoint) · v1.2 #29 (the "no daysRunning" gap — resolved by storing `total_active_time`) · #40 (dashboard search) · [[exodus-sog-ideation-framework]].
 - **Status:** open.
@@ -418,7 +425,7 @@ They don't cross. Steering never touches templates; realism never touches native
 | A.65 | #56 | P1 | Pre-write copy wave: ask Segment·Awareness·Primer·Mechanism·CTA·Steering every time; offered, non-blocking defaults; never pre-decide primer or author steering | open |
 | A.66 | #57 | **P0** | Accept raw FB ad copy + FB Ad Library URL/id directly into genesis (`--fb-ad <url\|id>`, `--paste "<copy>"`); save to swipe bank; fold in beat-map recipe | open · top-of-copy-backlog |
 | A.67 | #58 | P1 | Make swipe chain work end-to-end: auto-resolve page id from an ad URL; accept name/page-URL/paste entry points; chain research→mine→write in one flow | open |
-| A.68 | #59 | P1 | Persist full ScrapeCreators metadata (impressions/reach/dates/total_active_time/collation_count/spend/status); paginate via cursor (kill 200 cap); sort/score (impr×longevity×variants)/filter; semantic hook search; scope mining | open |
+| A.68 | #59 | P1 | Persist full ScrapeCreators metadata (impressions/reach/dates/total_active_time/collation_count/spend/status); **fix server-side 200 cap** + add brand query param; paginate via cursor/offset; CLI `--brand`/`--since`; sort/score (impr×longevity×variants)/filter; semantic hook search; scope mining | open |
 
 ---
 
