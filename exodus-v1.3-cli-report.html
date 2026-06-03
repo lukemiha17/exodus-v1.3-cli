@@ -39,6 +39,7 @@ figcaption{font-size:12px;color:#888;padding:6px 10px;background:#fafafa;border-
 <h2>TL;DR — running summary</h2>
 <div class='ln'></div>
 <div class='ln'>- <strong>#52 (P0 — THE #1 issue overall)</strong> — <strong>Steering must be an explicitly-requested, first-class input</strong> — and must support <strong>steering-ONLY runs (no ad copy)</strong> and <strong>steering-EMPHASIS</strong>. The flow has to ASK for the operator&#x27;s steering instructions every time; sometimes the run is *for* an ad but the operator wants only their steering (no copy) to drive it, or wants steering weighted as primary. Steering stays Native-only.</div>
+<div class='ln'>- <strong>#57 (P0 — Lucas: &quot;SUPER FUCKING IMPORTANT&quot;)</strong> — <strong>No way to ingest raw Facebook ad copy / a FB Ad Library URL into the copy pipeline.</strong> <code>genesis --reel</code> is IG/TikTok only; <code>--swipe &lt;id&gt;</code> needs an already-mined internal id; swipe mining is page-level (<code>fbPageRef</code>), not a single ad. <strong>Nothing accepts a pasted FB ad&#x27;s raw copy or an Ad Library ad URL/id directly.</strong> Must add: paste raw FB ad copy → write, and/or <code>--fb-ad &lt;url|id&gt;</code> → fetch + write. (Swipe = the S in SOG; this blocks it.)</div>
 <div class='ln'>- <strong>#47 (P1)</strong> — <strong>&quot;Native&quot; is mislabeled — it&#x27;s the category, not an engine.</strong> Native is the *tab*; the two engines under it are <strong>Reptile</strong> and <strong>Copy-Derived</strong>. There is no standalone &quot;Native&quot; engine — yet a run card reads &quot;Creative Suite — <strong>Native</strong>&quot; while badged <strong>Reptile</strong>, because CLI <code>--type native</code> silently maps to the Reptile engine. Customer can&#x27;t tell which engine ran. Fix the taxonomy across CLI + dashboard + run-card labels.</div>
 <div class='ln'>- <strong>#48 (P1)</strong> — <strong>Generation auto-fires a default suite without asking — the config IS the creative call.</strong> Dropping 4 ads fired <strong>three runs in one batch</strong> (Template <code>auto·1:1</code> + Copy-Derived 4-concept + Reptile 4-concept) that Lucas never selected. It should *ask first* via a spec step (the Lucas-approved <strong>Engine → Scope → Aspect → Count → Submit</strong> wizard), and ship bounded <strong>run formats (F1–F6)</strong> instead of open spray. Default to <strong>nothing</strong>; never generate unasked output.</div>
 <div class='ln'>- <strong>#49 (P2)</strong> — <strong>No cancel command in the CLI.</strong> Once runs are fired there&#x27;s no way to stop them. Add <code>exodus image cancel &lt;runId&gt;</code> / batch-cancel.</div>
@@ -352,6 +353,29 @@ figcaption{font-size:12px;color:#888;padding:6px 10px;background:#fafafa;border-
 <div class='ln'>- <strong>Cross-ref:</strong> #48 (image spec wizard) · #52 (steering asked, non-blocking) · #54 (CTA/destination) · memory <code>feedback_exodus_pre_write_copy_checklist</code>.</div>
 <div class='ln'>- <strong>Status:</strong> open.</div>
 <div class='ln'></div>
+<h3>#57 — [SUPER IMPORTANT] No path to ingest raw FB ad copy / a Facebook Ad Library URL into the copy pipeline</h3>
+<div class='ln'>- <strong>Area:</strong> Copy pipeline ingestion — <code>genesis</code> / the <strong>Swipe</strong> path. (The S in SOG: Swipe · Organic · Gambit.)</div>
+<div class='ln'>- <strong>Severity:</strong> <strong>P0</strong> — Lucas, verbatim: *&quot;this is SUPER FUCKING IMPORTANT: we need to be able to accept these raw FB ad copy stuff.&quot;* Swiping competitor FB ads is a core workflow and there&#x27;s no first-class path for it.</div>
+<div class='ln'>- <strong>What:</strong> There is <strong>no direct &quot;paste a Facebook Ad Library ad / URL → write copy&quot; path.</strong> Confirmed in source:</div>
+<div class='ln'>  - <code>genesis --reel</code> = <strong>IG / TikTok only</strong> (no FB Ad Library).</div>
+<div class='ln'>  - <code>genesis --swipe &lt;id&gt;</code> = writes from an <strong>already-mined</strong> swipe by internal id — not from a URL or pasted copy.</div>
+<div class='ln'>  - <strong>Swipe mining</strong> ingests at the <strong>page level</strong> (<code>fbPageRef</code>), not a single ad.</div>
+<div class='ln'>  - <strong>Nothing ingests a Facebook Ad Library ad id/URL — or pasted raw FB ad copy — directly.</strong></div>
+<div class='ln'>  - The intended flow simply doesn&#x27;t exist. Current workaround: someone manually pulls each ad&#x27;s text off the Ad Library page, then <code>genesis run --brief</code> from it (fragile, depends on the page being fetchable — ties to v1.2 #28: scraped-ad data only via the raw endpoint, no CLI command).</div>
+<div class='ln'>- <strong>Where:</strong> <code>genesis</code> CLI; the swipe path.</div>
+<div class='ln'>- <strong>Repro:</strong> have a Facebook Ad Library ad URL (or raw FB ad copy) you want to model → there&#x27;s no command that accepts it; <code>--reel</code> rejects FB, <code>--swipe</code> wants an internal id.</div>
+<div class='ln'>- <strong>Screenshot:</strong> *(none — CLI capability gap, confirmed in source)*</div>
+<div class='ln'>- <strong>Expected:</strong> <strong>accept raw FB ad copy directly</strong> — both:</div>
+<p>  1. <strong>Paste the raw ad copy (text)</strong> → ingest → write from it.</p>
+<p>  2. <strong>Paste a FB Ad Library ad URL / id</strong> → fetch the ad&#x27;s copy (+ creative) → write from it (single-ad, not page-level).</p>
+<div class='ln'>- <strong>Proposed fix:</strong></div>
+<p>  1. <code>genesis run --fb-ad &lt;url|id&gt;</code> — fetch a single Ad Library ad&#x27;s text + creative, ingest, write.</p>
+<p>  2. <code>genesis run --paste &quot;&lt;raw ad copy&gt;&quot;</code> (or <code>--swipe-text &lt;file&gt;</code>) — write directly from pasted competitor copy, no mining round-trip.</p>
+<p>  3. <strong>Save ingested ads to the swipe bank</strong> so they&#x27;re addressable later via <code>--swipe &lt;id&gt;</code>.</p>
+<p>  4. Fold in the working <strong>beat-map swipe recipe</strong> (v1.2) so the faithful-model path is first-class, not a manual paste.</p>
+<div class='ln'>- <strong>Cross-ref:</strong> v1.2 #28 (scraped-ad data only via raw <code>/api/v2/swipe-library</code>, no CLI) · the working swipe recipe (<code>genesis run --brief</code> + beat-map) · [[exodus-sog-ideation-framework]] (Swipe axis).</div>
+<div class='ln'>- <strong>Status:</strong> open — <strong>P0, top of the copy backlog.</strong></div>
+<div class='ln'></div>
 <hr>
 <div class='ln'></div>
 <h2>Action index (for Brad)</h2>
@@ -369,6 +393,7 @@ figcaption{font-size:12px;color:#888;padding:6px 10px;background:#fafafa;border-
 <div class='ln'>| A.63 | #54 | P1 | Allow re-dispatching an idea to the writer (N generations); stop locking idea against re-dispatch (or soft-confirm); toast must explain skips; show per-idea run history | open |</div>
 <div class='ln'>| A.64 | #55 | P1 | Make <code>claimRenderSlot</code> OCC-resilient (retry+backoff); remove hot-doc contention (shard/per-row); throttle concurrent claims; auto-retry + &quot;retry failed&quot; UI | open |</div>
 <div class='ln'>| A.65 | #56 | P1 | Pre-write copy wave: ask Segment·Awareness·Primer·Mechanism·CTA·Steering every time; offered, non-blocking defaults; never pre-decide primer or author steering | open |</div>
+<div class='ln'>| A.66 | #57 | <strong>P0</strong> | Accept raw FB ad copy + FB Ad Library URL/id directly into genesis (<code>--fb-ad &lt;url\|id&gt;</code>, <code>--paste &quot;&lt;copy&gt;&quot;</code>); save to swipe bank; fold in beat-map recipe | open · top-of-copy-backlog |</div>
 <div class='ln'></div>
 <hr>
 <div class='ln'></div>
