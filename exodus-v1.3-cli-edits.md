@@ -34,7 +34,8 @@ Screenshots live in `screenshots/` and are **never edited** — saved exactly as
 - **#50 (P1)** — **Brand Info (image-gen assets) isn't prompted or validated when empty; two "brand" layers are conflated; no CLI setter.** Image gen ran with founder/product empty while `doctor` said "READY" (that only reflects the partial copy layer). Founder name + product photos are dashboard-only — no CLI to set them.
 - **#51 (P1)** — **Manual template runs cap at 50 images/run and just error past it.** "2 per all 33" = 66 images > the 50-cap, so the run fails instead of completing. The front door (`image`/`template`) should **auto-split into multiple runs (or warn up front)** rather than erroring. (Re-surfaces v1.2 #33's 50-cap.)
 - **#53 (✅ approved design)** — **Copy flow: the "what do you want done with this idea?" gate.** After a raw idea, before genesis writes, a menu offers **Write the ad** (straight to genesis, banks nothing — default) · **Both** (write now AND save to Idea Bank) · **Just save it** (`idea add`, no copy yet). Lucas: *"kinda like this."* Matches the SOG bank-seeds-vs-rip-end-to-end model.
-- **#54 (P1)** — **Idea Bank → writer dispatch silently SKIPS an idea that's already running; can't generate the same idea multiple times.** Dispatching an idea returned **"Dispatched 0 idea(s) to the writer. Skipped 1"** — it skipped because a Brief run for that idea was already "running / No doc yet." Lucas: *"you should be able to generate it multiple times."* Each dispatch should fire a NEW run (re-generation allowed); at most a soft confirm, never a silent skip — and the toast should say *why* it skipped.
+- **#54 (P1)** — **Idea Bank → writer dispatch silently SKIPS an idea that's already running; can't generate the same idea multiple times.** Dispatching an idea returned **"Dispatched 0 idea(s) to the writer. Skipped 1"** — it skipped because a Brief run for that idea was already "running / No doc yet." **Root cause confirmed:** the idea is *locked* while its run is in flight, so every re-dispatch (note and all) is skipped; `genesis run --brief` bypasses the lock. Lucas: *"you should be able to generate it multiple times."* Each dispatch should fire a NEW run (re-generation allowed); at most a soft confirm, never a silent skip — and the toast should say *why* it skipped.
+- **#55 (P1)** — **Template renders fail under concurrency (Convex OCC).** In the big template batch a large share of tiles came back **"Failed"** with `creativeSuiteTemplate:claimRenderSlot failed (503): OptimisticConcurrencyControlFailure` on the `creativeSuiteTemplateRenders` table — write contention from many renders claiming slots at once (amplified by #51's 50-cap split firing several runs together). Lots worked, lots failed; no auto-retry. Backend needs OCC-resilient slot-claiming + retry.
 
 ---
 
@@ -286,7 +287,26 @@ They don't cross. Steering never touches templates; realism never touches native
   2. If guarding accidental double-fire, make it a **confirm**, not a hard skip.
   3. **Explain skips** in the toast ("Skipped 1: already running — generate again?") instead of an opaque "Skipped 1."
   4. Surface **per-idea run history** (N runs) so repeat generations are visible from the bank.
+- **Root cause (confirmed this session):** the idea is **locked while its writer run is in flight** — so every re-dispatch (steering note and all) is skipped until the first run finishes. `genesis run --brief` bypasses the lock entirely (writes without touching the bank lock). The fix is to stop locking the idea against re-dispatch (or make the lock a soft confirm).
 - **Status:** open.
+
+### #55 — Template renders fail under concurrency: `claimRenderSlot` OptimisticConcurrencyControlFailure (503)
+- **Area:** Template render backend — Convex mutation `creativeSuiteTemplate:claimRenderSlot` (table `creativeSuiteTemplateRenders`) → dashboard render grid.
+- **Severity:** P1 — silent **partial failure of a paid batch**; a large share of renders fail, with no auto-retry.
+- **What:** In the big template batch (the 264-render run, split into several runs per #51's 50-cap), **a lot of renders worked but a lot FAILED.** Failed tiles render **"Failed"** + the error:
+  > `Convex mutation creativeSuiteTemplate:claimRenderSlot failed (503): {"code":"OptimisticConcurrencyControlFailure","message":"Documents read from or written to the \"creativeSuiteTemplateRenders\" table ..."}`
+  - Failed ad-types seen in one screen: **HERO · HOLDING-SIGN · NATIVE-NEWS · STATISTICS · BEFORE-AFTER · INFOGRAPHIC · HAPPY-AVATAR · PRODUCT-BREAKDOWN** (one tile — the FLOW tub — rendered fine).
+  - This is **write contention**: many renders claiming slots in the **same table at once** trip Convex's optimistic-concurrency control. The #51 50-cap split (multiple runs firing together) **amplifies** it.
+- **Where:** dashboard render grid (template); backend `creativeSuiteTemplate:claimRenderSlot`.
+- **Repro:** fire a large template batch (many renders / multiple concurrent runs, e.g. all 33 × 2 across 4 ads) → a subset of tiles fail with the OCC 503.
+- **Screenshot:** `screenshots/55-template-renders-failed-occ.png`
+- **Expected:** the batch completes without renders failing on write conflicts; transient contention is retried, not surfaced as a dead "Failed" tile.
+- **Proposed fix:**
+  1. **Make `claimRenderSlot` OCC-resilient** — retry-with-backoff/jitter on `OptimisticConcurrencyControlFailure`. A surfaced 503 means retries were exhausted or the function design forces hot-document contention.
+  2. **Remove the hot-doc bottleneck** — don't read/write a single shared aggregate to claim a slot; shard the counter, or claim per-render rows independently so writes don't collide.
+  3. **Throttle concurrent claims** — a server-side concurrency cap on slot-claims (ties to #51's auto-split: split *and* pace).
+  4. **Auto-retry failed renders** + add a **"retry failed"** action on the grid; show a clean per-tile error, not the raw Convex string.
+- **Status:** open — backend reliability. (Concurrency theme: v1.2 A.44 Genesis VPS; #51 50-cap split.)
 
 ---
 
@@ -302,7 +322,8 @@ They don't cross. Steering never touches templates; realism never touches native
 | A.59 | #51 | P1 | Auto-split over-cap manual template batches (or warn+confirm) instead of erroring at 50 images/run; show the cap in the count step | open |
 | A.60 | #48 (W3) | P1 | Manual ad-type picker = grouped checklist with inline per-type count stepper (not free-text) + same/per-ad toggle | open |
 | A.62 | #53 | ✅ | Keep the copy ideation gate (Write / Both / Just save) — banks-vs-writes split per the SOG model | approved-direction |
-| A.63 | #54 | P1 | Allow re-dispatching an idea to the writer (N generations); soft-confirm not silent-skip; toast must explain skips; show per-idea run history | open |
+| A.63 | #54 | P1 | Allow re-dispatching an idea to the writer (N generations); stop locking idea against re-dispatch (or soft-confirm); toast must explain skips; show per-idea run history | open |
+| A.64 | #55 | P1 | Make `claimRenderSlot` OCC-resilient (retry+backoff); remove hot-doc contention (shard/per-row); throttle concurrent claims; auto-retry + "retry failed" UI | open |
 
 ---
 
