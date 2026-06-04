@@ -29,7 +29,7 @@ Screenshots live in `screenshots/` and are **never edited** — saved exactly as
 
 - **#52 (P0 — THE #1 issue overall)** — **Steering must be an explicitly-requested, first-class input** — and must support **steering-ONLY runs (no ad copy)** and **steering-EMPHASIS**. The flow has to ASK for the operator's steering instructions every time; sometimes the run is *for* an ad but the operator wants only their steering (no copy) to drive it, or wants steering weighted as primary. Steering stays Native-only.
 - **#57 (P0 — Lucas: "SUPER FUCKING IMPORTANT")** — **No way to ingest raw Facebook ad copy / a FB Ad Library URL into the copy pipeline.** `genesis --reel` is IG/TikTok only; `--swipe <id>` needs an already-mined internal id; swipe mining is page-level (`fbPageRef`), not a single ad. **Nothing accepts a pasted FB ad's raw copy or an Ad Library ad URL/id directly.** Must add: paste raw FB ad copy → write, and/or `--fb-ad <url|id>` → fetch + write. (Swipe = the S in SOG; this blocks it.)
-- **#60 (P1)** — **Competitor-swipe write runs fail with no doc and no surfaced error.** Two "Competitor swipe" writes ("Before You Snap At Someone … Eat This.", "Macros Don't Care That You Have Kids.", Jun 3 6:54 PM) both came back **failed / "No doc yet"** — and the card shows **no error reason**. The swipe-write path is failing, and there's no diagnostic to know why.
+- **#60 (P0 — single most important break)** — **Writing from a competitor ad fails 100% — it kills the whole reason for the competitor library.** The loop is **find ✅ + mine ✅ + WRITE ❌**: `genesis:paste` (the swipe-write path) **fails every time** (two "Competitor swipe" runs → `failed` / "No doc yet", **no surfaced error**), while **`genesis:brief` ("model after this: …") works.** Workaround = feed the competitor copy as a brief; the real fix = repair `genesis:paste` + surface errors.
 - **#59 (P1)** — **Swipe Library throws away the metadata ScrapeCreators already returns, and caps at 200.** Exodus stores only `headline/body/CTA/transcript` and caps `--list-swipes` at 200 with no pagination — discarding impressions/reach, dates, `total_active_time` (longevity), `collation_count` (variant count), spend, status, and the `cursor`/`searchResultsCount` (true total). We want: store it all · sort by date/longevity/variant-count/impressions · a **score = impressions × longevity (× variants)** · filter by brand/date/active · **semantic hook search** · paginate (no 200 cap) · **scope mining** so multi-product brands don't flood the library. "The data exists upstream — store it + surface it + let me sort/search it."
 - **#58 (P1)** — **The whole swipe pipeline is broken end-to-end** — no working path from "here's a competitor FB ad" to "written copy." research/watchlist needs real page names (can't derive from an ad link); mining is page-level (`fbPageRef`/`view_all_page_id`) which a raw ad URL doesn't surface; `--swipe` needs an already-mined id. Every route requires manually grabbing names / page-URLs / pasted text. Lucas: *"that process is pretty much all broken… pretty important."* (Compounds #57; v1.2 #28/#30.)
 - **#47 (P1)** — **"Native" is mislabeled — it's the category, not an engine.** Native is the *tab*; the two engines under it are **Reptile** and **Copy-Derived**. There is no standalone "Native" engine — yet a run card reads "Creative Suite — **Native**" while badged **Reptile**, because CLI `--type native` silently maps to the Reptile engine. Customer can't tell which engine ran. Fix the taxonomy across CLI + dashboard + run-card labels.
@@ -407,24 +407,28 @@ They don't cross. Steering never touches templates; realism never touches native
 - **Cross-ref:** #57/#58 (swipe ingestion + pipeline) · v1.2 #28 (scraped data only via raw endpoint) · v1.2 #29 (the "no daysRunning" gap — resolved by storing `total_active_time`) · #40 (dashboard search) · [[exodus-sog-ideation-framework]].
 - **Status:** open.
 
-### #60 — Competitor-swipe write runs fail with no doc and no surfaced error
-- **Area:** Copy — genesis **competitor-swipe write** path → dashboard runs/Library.
-- **Severity:** P1 — the swipe-write path is failing, **and** the failure is undiagnosable from the UI.
-- **What:** Two **"Competitor swipe"** write runs both came back **failed**, **"No doc yet"** (Jun 3, 6:54 PM):
-  - *"Before You Snap At Someone … Eat This."*
-  - *"Macros Don't Care That You Have Kids."*
-  - The cards show **`failed`** with **no error reason** — just "No doc yet." So (a) competitor-swipe writes are failing, and (b) there's **no surfaced error** to tell why.
-- **Where:** dashboard runs/Library; the genesis competitor-swipe write path. (Likely downstream of the swipe-pipeline issues #57/#58 — the swipe source may be empty/malformed, or a genesis backend error.)
-- **Repro:** fire a competitor-swipe write → run shows **failed / "No doc yet"** with no error.
+### #60 — Writing from a competitor ad fails 100% (`genesis:paste`); the find→mine→WRITE loop dies at the last step
+- **Area:** Copy — genesis **competitor-swipe write** path (`genesis:paste` / `--swipe`) → dashboard runs/Library.
+- **Severity:** **P0 — the single most important break.** It kills the **entire reason** for the competitor library: you can find and mine competitor ads, but you **cannot write a fresh ad from one.**
+- **What:** The competitor loop is **find ✅ (#57/#58 ingestion aside) · mine ✅ · WRITE ❌**:
+  - **`genesis:paste` fails 100%** — every competitor-swipe write fails. Two runs (Jun 3, 6:54 PM) both returned **`failed` / "No doc yet"**:
+    - *"Before You Snap At Someone … Eat This."*
+    - *"Macros Don't Care That You Have Kids."*
+  - The cards show **no error reason** — just "failed / No doc yet," so it's also **undiagnosable from the UI**.
+  - **`genesis:brief` ("model after this: …") works** — so the writer itself is fine; the **`paste`/`--swipe` path specifically is broken.**
+- **Working workaround (verified):** since `genesis:brief` completes, rewrite a competitor ad by feeding its copy as a brief (*"model after this: …"*) instead of the broken `--swipe`/`paste` path. (Same shape as the v1.2 beat-map swipe recipe; ties to #57 fix #2 `--paste`.)
+- **Where:** `genesis:paste` / `genesis --swipe`; dashboard runs/Library.
+- **Repro:** fire a competitor-swipe write (`genesis:paste`/`--swipe`) → **fails 100%**, "No doc yet," no error. Same content via `genesis:brief` → succeeds.
 - **Screenshot:** `screenshots/60-competitor-swipe-failed.png`
-- **Expected:** swipe writes complete; on failure, the run **surfaces the actual error** (not just "failed"), and transient failures auto-retry.
+- **Expected:** writing from a competitor ad succeeds; on failure the run **surfaces the actual error**; transient failures auto-retry.
 - **Proposed fix:**
-  1. **Surface the error** on failed runs (reason + stage), not just "failed / No doc yet" — needed to diagnose at all.
-  2. **Investigate the genesis swipe-write failure** (backend logs) — confirm whether it's an empty/malformed swipe source (ties #57/#58) or a writer error.
-  3. **Auto-retry** transient failures; add a **retry** action on failed run cards.
-- **Note:** Claude is terminal-only and **can't see the backend error/logs** — needs Brad to pull the run logs for these two runIds to root-cause.
-- **Cross-ref:** #57/#58 (swipe pipeline) · #54 (dispatch) · #55 (other render/run failures).
-- **Status:** open — **need backend error/logs to root-cause.**
+  1. **Fix `genesis:paste`** — it fails 100%; root-cause via backend logs (empty/malformed swipe source per #57/#58, or a writer-path error). This is the headline fix.
+  2. **Route swipe-writes through the working `genesis:brief` path** as the interim default (model-after-this) so the loop works *today*.
+  3. **Surface the error** on failed runs (reason + stage), not just "failed / No doc yet."
+  4. **Auto-retry** transient failures + a **retry** action.
+- **Note:** Claude is terminal-only — **can't see the backend error/logs**; Brad needs to pull the run logs for these runIds to confirm the `genesis:paste` root cause.
+- **Cross-ref:** **#57** (ingestion / `--paste`) · **#58** (pipeline) · #54 (dispatch) · #55 (render failures). Together #57+#58+#60 are the **competitor-loop break cluster**; #60 is where it actually dies.
+- **Status:** open — **P0, the headline competitor-loop blocker.**
 
 ---
 
@@ -445,7 +449,7 @@ They don't cross. Steering never touches templates; realism never touches native
 | A.65 | #56 | P1 | Pre-write copy wave: ask Segment·Awareness·Primer·Mechanism·CTA·Steering every time; offered, non-blocking defaults; never pre-decide primer or author steering | open |
 | A.66 | #57 | **P0** | Accept raw FB ad copy + FB Ad Library URL/id directly into genesis (`--fb-ad <url\|id>`, `--paste "<copy>"`); save to swipe bank; fold in beat-map recipe | open · top-of-copy-backlog |
 | A.67 | #58 | P1 | Make swipe chain work end-to-end: auto-resolve page id from an ad URL; accept name/page-URL/paste entry points; chain research→mine→write in one flow | open |
-| A.69 | #60 | P1 | Surface error reason on failed runs (not just "failed/No doc yet"); root-cause competitor-swipe write failures (logs); auto-retry + retry button | open · needs-logs |
+| A.69 | #60 | **P0** | Fix `genesis:paste` (fails 100%); route swipe-writes through working `genesis:brief` interim; surface error on failed runs; auto-retry + retry button | open · headline-blocker |
 | A.68 | #59 | P1 | Persist full ScrapeCreators metadata (impressions/reach/dates/total_active_time/collation_count/spend/status); **fix server-side 200 cap** + add brand query param; paginate via cursor/offset; CLI `--brand`/`--since`; sort/score (impr×longevity×variants)/filter; semantic hook search; scope mining | open |
 
 ---
